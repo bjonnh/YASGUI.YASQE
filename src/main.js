@@ -505,6 +505,7 @@ root.createShareLink = function(yasqe) {
   urlParams["query"] = yasqe.getValue();
   return urlParams;
 };
+
 root.getAsCurl = function(yasqe, ajaxConfig) {
   var curl = require("./curl.js");
   return curl.createCurlString(yasqe, ajaxConfig);
@@ -600,29 +601,30 @@ root.drawButtons = function(yasqe) {
   /**
 	 * draw fullscreen button
 	 */
-
-  var toggleFullscreen = $("<div>", {
-    class: "fullscreenToggleBtns"
-  })
-    .append(
-      $(yutils.svg.getElement(imgs.fullscreen))
-        .addClass("yasqe_fullscreenBtn")
-        .attr("title", "Set editor full screen")
-        .click(function() {
-          yasqe.setOption("fullScreen", true);
-          yasqe.emit('fullscreen-enter')
-        })
-    )
-    .append(
-      $(yutils.svg.getElement(imgs.smallscreen))
-        .addClass("yasqe_smallscreenBtn")
-        .attr("title", "Set editor to normal size")
-        .click(function() {
-          yasqe.setOption("fullScreen", false);
-          yasqe.emit('fullscreen-leave')
-        })
-    );
-  yasqe.buttons.append(toggleFullscreen);
+  if (yasqe.options.showFullscreenLink) {
+    var toggleFullscreen = $("<div>", {
+      class: "fullscreenToggleBtns"
+    })
+        .append(
+            $(yutils.svg.getElement(imgs.fullscreen))
+                .addClass("yasqe_fullscreenBtn")
+                .attr("title", "Set editor full screen")
+                .click(function () {
+                  yasqe.setOption("fullScreen", true);
+                  yasqe.emit('fullscreen-enter')
+                })
+        )
+        .append(
+            $(yutils.svg.getElement(imgs.smallscreen))
+                .addClass("yasqe_smallscreenBtn")
+                .attr("title", "Set editor to normal size")
+                .click(function () {
+                  yasqe.setOption("fullScreen", false);
+                  yasqe.emit('fullscreen-leave')
+                })
+        );
+    yasqe.buttons.append(toggleFullscreen);
+  }
 
   if (yasqe.options.sparql.showQueryButton) {
     $("<div>", {
