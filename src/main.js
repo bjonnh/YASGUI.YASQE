@@ -298,7 +298,9 @@ var postProcessCmElement = function(yasqe) {
     if (valueFromStorage) yasqe.setValue(valueFromStorage);
   }
 
-  root.drawButtons(yasqe);
+  if (yasqe.options.drawButtons) {
+    root.drawButtons(yasqe);
+  }
 
   /**
 	 * Add event handlers
