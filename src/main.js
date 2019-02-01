@@ -298,8 +298,10 @@ var postProcessCmElement = function(yasqe) {
     if (valueFromStorage) yasqe.setValue(valueFromStorage);
   }
 
-  if (yasqe.options.drawButtons) {
+  if (yasqe.options.drawButtons === true) {
     root.drawButtons(yasqe);
+  } else {
+    yasqe.buttons = {};
   }
 
   /**
@@ -376,12 +378,14 @@ var getUrlParams = function() {
  */
 
 var updateButtonsTransparency = function(yasqe) {
-  yasqe.cursor = $(".CodeMirror-cursor");
-  if (yasqe.buttons && yasqe.buttons.is(":visible") && yasqe.cursor.length > 0) {
-    if (utils.elementsOverlap(yasqe.cursor, yasqe.buttons)) {
-      yasqe.buttons.find("svg").attr("opacity", "0.2");
-    } else {
-      yasqe.buttons.find("svg").attr("opacity", "1.0");
+  if (yasqe.options.drawButtons === true) {
+    yasqe.cursor = $(".CodeMirror-cursor");
+    if (yasqe.buttons && yasqe.buttons.is(":visible") && yasqe.cursor.length > 0) {
+      if (utils.elementsOverlap(yasqe.cursor, yasqe.buttons)) {
+        yasqe.buttons.find("svg").attr("opacity", "0.2");
+      } else {
+        yasqe.buttons.find("svg").attr("opacity", "1.0");
+      }
     }
   }
 };
@@ -484,12 +488,14 @@ root.registerAutocompleter("classes", require("./autocompleters/classes.js"));
 root.registerAutocompleter("variables", require("./autocompleters/variables.js"));
 
 root.positionButtons = function(yasqe) {
-  var scrollBar = $(yasqe.getWrapperElement()).find(".CodeMirror-vscrollbar");
-  var offset = 0;
-  if (scrollBar.is(":visible")) {
-    offset = scrollBar.outerWidth();
+  if (yasqe.options.drawButtons === true) {
+    var scrollBar = $(yasqe.getWrapperElement()).find(".CodeMirror-vscrollbar");
+    var offset = 0;
+    if (scrollBar.is(":visible")) {
+      offset = scrollBar.outerWidth();
+    }
+    if (yasqe.buttons.is(":visible")) yasqe.buttons.css("right", offset + 4);
   }
-  if (yasqe.buttons.is(":visible")) yasqe.buttons.css("right", offset + 4);
 };
 
 /**
