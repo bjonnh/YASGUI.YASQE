@@ -9114,7 +9114,7 @@ module.exports={
   "_args": [
     [
       "yasgui-utils@1.6.7",
-      "/home/lrd900/yasgui/yasqe.opentriply"
+      "/home/bjo/Software/Semantic/YASGUI.YASQE"
     ]
   ],
   "_from": "yasgui-utils@1.6.7",
@@ -9138,7 +9138,7 @@ module.exports={
   ],
   "_resolved": "https://registry.npmjs.org/yasgui-utils/-/yasgui-utils-1.6.7.tgz",
   "_spec": "1.6.7",
-  "_where": "/home/lrd900/yasgui/yasqe.opentriply",
+  "_where": "/home/bjo/Software/Semantic/YASGUI.YASQE",
   "author": {
     "name": "Laurens Rietveld"
   },
@@ -9317,7 +9317,7 @@ module.exports = {
 module.exports={
   "name": "yasgui-yasqe",
   "description": "Yet Another SPARQL Query Editor",
-  "version": "2.11.19",
+  "version": "2.11.21",
   "main": "src/main.js",
   "license": "MIT",
   "author": "Laurens Rietveld",
@@ -9331,37 +9331,38 @@ module.exports={
     "update-interactive": "npm-check --skip-unused -u"
   },
   "devDependencies": {
-    "bootstrap-sass": "^3.3.7",
+    "bootstrap-sass": "^3.4.0",
     "browserify": "^13.1.0",
     "browserify-shim": "^3.8.12",
     "browserify-transform-tools": "^1.6.0",
     "exorcist": "^0.4.0",
     "gulp": "^3.9.1",
     "gulp-autoprefixer": "^3.1.0",
-    "gulp-bump": "^2.2.0",
+    "gulp-bump": "^2.9.0",
     "gulp-concat": "^2.6.0",
     "gulp-connect": "^4.2.0",
     "gulp-cssimport": "^3.1.0",
-    "gulp-cssnano": "^2.1.2",
+    "gulp-cssnano": "^2.1.3",
     "gulp-embedlr": "^0.5.2",
     "gulp-filter": "^4.0.0",
-    "gulp-git": "^2.4.1",
+    "gulp-git": "^2.8.1",
     "gulp-jsvalidate": "^2.1.0",
     "gulp-livereload": "^3.8.1",
     "gulp-notify": "^2.2.0",
-    "gulp-rename": "^1.2.2",
+    "gulp-rename": "^1.4.0",
     "gulp-sass": "^2.3.2",
-    "gulp-sourcemaps": "^1.6.0",
+    "gulp-sourcemaps": "^1.12.1",
     "gulp-streamify": "1.0.2",
-    "gulp-tag-version": "^1.3.0",
+    "gulp-tag-version": "^1.3.1",
     "gulp-uglify": "^1.5.4",
-    "node-sass": "^3.8.0",
+    "node-sass": "^4.11.0",
+    "natives": "^1.1.6",
     "require-dir": "^0.3.2",
     "run-sequence": "^1.2.2",
-    "vinyl-buffer": "^1.0.0",
-    "vinyl-source-stream": "~1.1.0",
+    "vinyl-buffer": "^1.0.1",
+    "vinyl-source-stream": "^1.1.2",
     "vinyl-transform": "1.0.0",
-    "watchify": "^3.7.0"
+    "watchify": "^3.11.0"
   },
   "bugs": "https://github.com/YASGUI/YASQE/issues/",
   "keywords": [
@@ -9385,7 +9386,7 @@ module.exports={
   "dependencies": {
     "codemirror": "5.17.0",
     "jquery": "^2.2.4",
-    "prettier": "^1.4.4",
+    "prettier": "^1.16.3",
     "yasgui-utils": "^1.6.7"
   },
   "optionalShim": {
@@ -9407,259 +9408,261 @@ module.exports={
 },{}],31:[function(require,module,exports){
 "use strict";
 var $ = (function(){try{return require('jquery')}catch(e){return window.jQuery}})(),
-  utils = require("../utils.js"),
-  yutils = require("yasgui-utils"),
-  Trie = require("../../lib/trie.js"),
-  YASQE = require("../main.js");
-
-module.exports = function(YASQE, yasqe) {
-  var completionNotifications = {};
-  var completers = {};
-  var tries = {};
-
-  yasqe.on("cursorActivity", function(yasqe, eventInfo) {
-    autoComplete(true);
-  });
-  yasqe.on("change", function() {
-    var needPossibleAdjustment = [];
-    for (var notificationName in completionNotifications) {
-      if (completionNotifications[notificationName].is(":visible")) {
-        needPossibleAdjustment.push(completionNotifications[notificationName]);
-      }
-    }
-    if (needPossibleAdjustment.length > 0) {
-      //position completion notifications
-      var scrollBar = $(yasqe.getWrapperElement()).find(".CodeMirror-vscrollbar");
-      var offset = 0;
-      if (scrollBar.is(":visible")) {
-        offset = scrollBar.outerWidth();
-      }
-      needPossibleAdjustment.forEach(function(notification) {
-        notification.css("right", offset);
-      });
-    }
-  });
-
-  /**
-	 * Store bulk completions in memory as trie, and store these in localstorage as well (if enabled)
-	 *
-	 * @method doc.storeBulkCompletions
-	 * @param completions {array}
-	 */
-  var storeBulkCompletions = function(completer, completions) {
-    // store array as trie
-    tries[completer.name] = new Trie();
-    for (var i = 0; i < completions.length; i++) {
-      tries[completer.name].insert(completions[i]);
-    }
-    // store in localstorage as well
-    var storageId = utils.getPersistencyId(yasqe, completer.persistent);
-    if (storageId) yutils.storage.set(storageId, completions, "month", yasqe.options.onQuotaExceeded);
-  };
-
-  var initCompleter = function(name, completionInit) {
-    var completer = (completers[name] = new completionInit(yasqe, name));
-    completer.name = name;
-    if (completer.bulk) {
-      var storeArrayAsBulk = function(suggestions) {
-        if (suggestions && suggestions instanceof Array && suggestions.length > 0) {
-          storeBulkCompletions(completer, suggestions);
-        }
-      };
-      if (completer.get instanceof Array) {
-        // we don't care whether the completions are already stored in
-        // localstorage. just use this one
-        storeArrayAsBulk(completer.get);
-      } else {
-        // if completions are defined in localstorage, use those! (calling the
-        // function may come with overhead (e.g. async calls))
-        var completionsFromStorage = null;
-        var persistencyIdentifier = utils.getPersistencyId(yasqe, completer.persistent);
-        if (persistencyIdentifier) completionsFromStorage = yutils.storage.get(persistencyIdentifier);
-        if (completionsFromStorage && completionsFromStorage.length > 0) {
-          storeArrayAsBulk(completionsFromStorage);
-        } else {
-          // nothing in storage. check whether we have a function via which we
-          // can get our prefixes
-          if (completer.get instanceof Function) {
-            if (completer.async) {
-              completer.get(null, storeArrayAsBulk);
-            } else {
-              storeArrayAsBulk(completer.get());
-            }
-          }
-        }
-      }
-    }
-  };
-
-  var autoComplete = function(fromAutoShow) {
-    if (yasqe.somethingSelected()) return;
-    var tryHintType = function(completer) {
-      if (
-        fromAutoShow && // from autoShow, i.e. this gets called each time the editor content changes
-        (!completer.autoShow || // autoshow for  this particular type of autocompletion is -not- enabled
-          (!completer.bulk && completer.async)) // async is enabled (don't want to re-do ajax-like request for every editor change)
-      ) {
-        return false;
-      }
-
-      var hintConfig = {
-        closeCharacters: /(?=a)b/,
-        completeSingle: false
-      };
-      if (!completer.bulk && completer.async) {
-        hintConfig.async = true;
-      }
-      var wrappedHintCallback = function(yasqe, callback) {
-        return getCompletionHintsObject(completer, callback);
-      };
-      var result = YASQE.showHint(yasqe, wrappedHintCallback, hintConfig);
-      return true;
-    };
-    for (var completerName in completers) {
-      if ($.inArray(completerName, yasqe.options.autocompleters) == -1) continue; //this completer is disabled
-      var completer = completers[completerName];
-      if (!completer.isValidCompletionPosition) continue; //no way to check whether we are in a valid position
-
-      if (!completer.isValidCompletionPosition()) {
-        //if needed, fire callbacks for when we are -not- in valid completion position
-        if (completer.callbacks && completer.callbacks.invalidPosition) {
-          completer.callbacks.invalidPosition(yasqe, completer);
-        }
-        //not in a valid position, so continue to next completion candidate type
-        continue;
-      }
-      // run valid position handler, if there is one (if it returns false, stop the autocompletion!)
-      if (completer.callbacks && completer.callbacks.validPosition) {
-        if (completer.callbacks.validPosition(yasqe, completer) === false) continue;
-      }
-      var success = tryHintType(completer);
-      if (success) break;
-    }
-  };
-
-  var getCompletionHintsObject = function(completer, callback) {
-    var getSuggestionsFromToken = function(partialToken) {
-      var stringToAutocomplete = partialToken.autocompletionString || partialToken.string;
-      var suggestions = [];
-      if (tries[completer.name]) {
-        suggestions = tries[completer.name].autoComplete(stringToAutocomplete);
-      } else if (typeof completer.get == "function" && completer.async == false) {
-        suggestions = completer.get(stringToAutocomplete);
-      } else if (typeof completer.get == "object") {
-        var partialTokenLength = stringToAutocomplete.length;
-        for (var i = 0; i < completer.get.length; i++) {
-          var completion = completer.get[i];
-          if (completion.slice(0, partialTokenLength) == stringToAutocomplete) {
-            suggestions.push(completion);
-          }
-        }
-      }
-      return getSuggestionsAsHintObject(suggestions, completer, partialToken);
-    };
-
-    var token = yasqe.getCompleteToken();
-    if (completer.preProcessToken) {
-      token = completer.preProcessToken(token);
-    }
-
-    if (token) {
-      // use custom completionhint function, to avoid reaching a loop when the
-      // completionhint is the same as the current token
-      // regular behaviour would keep changing the codemirror dom, hence
-      // constantly calling this callback
-      if (!completer.bulk && completer.async) {
-        var wrappedCallback = function(suggestions) {
-          callback(getSuggestionsAsHintObject(suggestions, completer, token));
-        };
-        completer.get(token, wrappedCallback);
-      } else {
-        return getSuggestionsFromToken(token);
-      }
-    }
-  };
-
-  /**
-	 *  get our array of suggestions (strings) in the codemirror hint format
-	 */
-  var getSuggestionsAsHintObject = function(suggestions, completer, token) {
-    var hintList = [];
-    for (var i = 0; i < suggestions.length; i++) {
-      var suggestedString = suggestions[i];
-      if (completer.postProcessToken) {
-        suggestedString = completer.postProcessToken(token, suggestedString);
-      }
-      hintList.push({
-        text: suggestedString,
-        displayText: suggestedString,
-        hint: selectHint
-      });
-    }
-
-    var cur = yasqe.getCursor();
-    var returnObj = {
-      completionToken: token.string,
-      list: hintList,
-      from: {
-        line: cur.line,
-        ch: token.start
-      },
-      to: {
-        line: cur.line,
-        ch: token.end
-      }
-    };
-    //if we have some autocompletion handlers specified, add these these to the object. Codemirror will take care of firing these
-    if (completer.callbacks) {
-      for (var callbackName in completer.callbacks) {
-        if (completer.callbacks[callbackName]) {
-          YASQE.on(returnObj, callbackName, completer.callbacks[callbackName]);
-        }
-      }
-    }
-    return returnObj;
-  };
-
-  return {
-    init: initCompleter,
-    completers: completers,
-    notifications: {
-      getEl: function(completer) {
-        return $(completionNotifications[completer.name]);
-      },
-      show: function(yasqe, completer) {
-        //only draw when the user needs to use a keypress to summon autocompletions
-        if (!completer.autoshow) {
-          if (!completionNotifications[completer.name])
-            completionNotifications[completer.name] = $("<div class='completionNotification'></div>");
-          completionNotifications[completer.name]
-            .show()
-            .text("Press CTRL - <spacebar> to autocomplete")
-            .appendTo($(yasqe.getWrapperElement()));
-        }
-      },
-      hide: function(yasqe, completer) {
-        if (completionNotifications[completer.name]) {
-          completionNotifications[completer.name].hide();
-        }
-      }
-    },
-    autoComplete: autoComplete,
-    getTrie: function(completer) {
-      return typeof completer == "string" ? tries[completer] : tries[completer.name];
-    }
-  };
-};
+    utils = require("../utils.js"),
+    yutils = require("yasgui-utils"),
+    Trie = require("../../lib/trie.js");
 
 /**
  * function which fires after the user selects a completion. this function checks whether we actually need to store this one (if completion is same as current token, don't do anything)
  */
-var selectHint = function(yasqe, data, completion) {
-  if (completion.text != yasqe.getTokenAt(yasqe.getCursor()).string) {
-    yasqe.replaceRange(completion.text, data.from, data.to);
-  }
+const selectHint = function (yasqe, data, completion) {
+    if (completion.text !== yasqe.getTokenAt(yasqe.getCursor()).string) {
+        yasqe.replaceRange(completion.text, data.from, data.to);
+    }
 };
+module.exports = function (YASQE, yasqe) {
+    const autoComplete = function (fromAutoShow) {
+        if (yasqe.somethingSelected()) return;
+        const tryHintType = function (completer) {
+            if (
+                fromAutoShow && // from autoShow, i.e. this gets called each time the editor content changes
+                (!completer.autoShow || // autoshow for  this particular type of autocompletion is -not- enabled
+                    (!completer.bulk && completer.async)) // async is enabled (don't want to re-do ajax-like request for every editor change)
+            ) {
+                return false;
+            }
+
+            const hintConfig = {
+                closeCharacters: /(?=a)b/,
+                completeSingle: false
+            };
+            if (!completer.bulk && completer.async) {
+                hintConfig.async = true;
+            }
+            const wrappedHintCallback = function (yasqe, callback) {
+                return getCompletionHintsObject(completer, callback);
+            };
+            YASQE.showHint(yasqe, wrappedHintCallback, hintConfig);
+            return true;
+        };
+        for (let completerName in completers) {
+            if ($.inArray(completerName, yasqe.options.autocompleters) === -1) continue; //this completer is disabled
+            if (completers.hasOwnProperty(completerName)) {
+                const completer = completers[completerName];
+                if (!completer.isValidCompletionPosition) continue; //no way to check whether we are in a valid position
+
+                if (!completer.isValidCompletionPosition()) {
+                    //if needed, fire callbacks for when we are -not- in valid completion position
+                    if (completer.callbacks && completer.callbacks.invalidPosition) {
+                        completer.callbacks.invalidPosition(yasqe, completer);
+                    }
+                    //not in a valid position, so continue to next completion candidate type
+                    continue;
+                }
+                // run valid position handler, if there is one (if it returns false, stop the autocompletion!)
+                if (completer.callbacks && completer.callbacks.validPosition) {
+                    if (completer.callbacks.validPosition(yasqe, completer) === false) continue;
+                }
+
+                if (tryHintType(completer)) break;
+            }
+        }
+    };
+    /**
+     *  get our array of suggestions (strings) in the codemirror hint format
+     */
+    const getSuggestionsAsHintObject = function (suggestions, completer, token) {
+        let hintList = [];
+        for (let i = 0; i < suggestions.length; i++) {
+            let suggestedString = suggestions[i];
+            if (completer.postProcessToken) {
+                suggestedString = completer.postProcessToken(token, suggestedString);
+            }
+            hintList.push({
+                text: suggestedString,
+                displayText: suggestedString,
+                hint: selectHint
+            });
+        }
+
+        let cur = yasqe.getCursor();
+        let returnObj = {
+            completionToken: token.string,
+            list: hintList,
+            from: {
+                line: cur.line,
+                ch: token.start
+            },
+            to: {
+                line: cur.line,
+                ch: token.end
+            }
+        };
+        //if we have some autocompletion handlers specified, add these these to the object. Codemirror will take care of firing these
+        if (completer.callbacks) {
+            for (let callbackName in completer.callbacks) {
+                if (completer.callbacks.hasOwnProperty(callbackName) && completer.callbacks[callbackName]) {
+                    YASQE.on(returnObj, callbackName, completer.callbacks[callbackName]);
+                }
+            }
+        }
+        return returnObj;
+    };
+    const getCompletionHintsObject = function (completer, callback) {
+        let getSuggestionsFromToken = function (partialToken) {
+            let stringToAutocomplete = partialToken.autocompletionString || partialToken.string;
+            let suggestions = [];
+            if (tries[completer.name]) {
+                suggestions = tries[completer.name].autoComplete(stringToAutocomplete);
+            } else if (typeof completer.get == "function" && completer.async === false) {
+                suggestions = completer.get(stringToAutocomplete);
+            } else if (typeof completer.get == "object") {
+                let partialTokenLength = stringToAutocomplete.length;
+                for (let i = 0; i < completer.get.length; i++) {
+                    let completion = completer.get[i];
+                    if (completion.slice(0, partialTokenLength) === stringToAutocomplete) {
+                        suggestions.push(completion);
+                    }
+                }
+            }
+            return getSuggestionsAsHintObject(suggestions, completer, partialToken);
+        };
+
+        let token = yasqe.getCompleteToken();
+        if (completer.preProcessToken) {
+            token = completer.preProcessToken(token);
+        }
+
+        if (token) {
+            // use custom completionhint function, to avoid reaching a loop when the
+            // completionhint is the same as the current token
+            // regular behaviour would keep changing the codemirror dom, hence
+            // constantly calling this callback
+            if (!completer.bulk && completer.async) {
+                let wrappedCallback = function (suggestions) {
+                    callback(getSuggestionsAsHintObject(suggestions, completer, token));
+                };
+                completer.get(token, wrappedCallback);
+            } else {
+                return getSuggestionsFromToken(token);
+            }
+        }
+    };
+    const completionNotifications = {};
+    const completers = {};
+    const tries = {};
+
+    yasqe.on("cursorActivity", function () {
+        autoComplete(true);
+    });
+
+    yasqe.on("change", function () {
+        const needPossibleAdjustment = [];
+        for (let notificationName in completionNotifications) {
+            if (completionNotifications.hasOwnProperty(notificationName) &&
+                completionNotifications[notificationName].is(":visible")) {
+                needPossibleAdjustment.push(completionNotifications[notificationName]);
+            }
+        }
+        if (needPossibleAdjustment.length > 0) {
+            //position completion notifications
+            const scrollBar = $(yasqe.getWrapperElement()).find(".CodeMirror-vscrollbar");
+            let offset = 0;
+            if (scrollBar.is(":visible")) {
+                offset = scrollBar.outerWidth();
+            }
+            needPossibleAdjustment.forEach(function (notification) {
+                notification.css("right", offset);
+            });
+        }
+    });
+
+    /**
+     * Store bulk completions in memory as trie, and store these in localstorage as well (if enabled)
+     *
+     * @method doc.storeBulkCompletions
+     * @param completer
+     * @param completions {array}
+     */
+    const storeBulkCompletions = function (completer, completions) {
+        // store array as trie
+        tries[completer.name] = new Trie();
+        for (let i = 0; i < completions.length; i++) {
+            tries[completer.name].insert(completions[i]);
+        }
+        // store in localstorage as well
+        const storageId = utils.getPersistencyId(yasqe, completer.persistent);
+        if (storageId) yutils.storage.set(storageId, completions, "month", yasqe.options.onQuotaExceeded);
+    };
+
+    const initCompleter = function (name, completionInit) {
+        const completer = (completers[name] = new completionInit(yasqe, name));
+        completer.name = name;
+        if (completer.bulk) {
+            const storeArrayAsBulk = function (suggestions) {
+                if (suggestions && suggestions instanceof Array && suggestions.length > 0) {
+                    storeBulkCompletions(completer, suggestions);
+                }
+            };
+            if (completer.get instanceof Array) {
+                // we don't care whether the completions are already stored in
+                // localstorage. just use this one
+                storeArrayAsBulk(completer.get);
+            } else {
+                // if completions are defined in localstorage, use those! (calling the
+                // function may come with overhead (e.g. async calls))
+                let completionsFromStorage = null;
+                const persistencyIdentifier = utils.getPersistencyId(yasqe, completer.persistent);
+                if (persistencyIdentifier) completionsFromStorage = yutils.storage.get(persistencyIdentifier);
+                if (completionsFromStorage && completionsFromStorage.length > 0) {
+                    storeArrayAsBulk(completionsFromStorage);
+                    //} else {
+                    // nothing in storage. check whether we have a function via which we
+                    // can get our prefixes
+                    if (completer.get instanceof Function) {
+                        if (completer.async) {
+                            completer.get(null, storeArrayAsBulk);
+                        } else {
+                            storeArrayAsBulk(completer.get());
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+
+    return {
+        init: initCompleter,
+        completers: completers,
+        notifications: {
+            getEl: function (completer) {
+                return $(completionNotifications[completer.name]);
+            },
+            show: function (yasqe, completer) {
+                //only draw when the user needs to use a keypress to summon autocompletions
+                if (completer.hasOwnProperty("autoshow") && !completer.autoshow) {
+                    if (!completionNotifications[completer.name])
+                        completionNotifications[completer.name] = $("<div class='completionNotification'></div>");
+                    completionNotifications[completer.name]
+                        .show()
+                        .text("Press CTRL - <spacebar> to autocomplete")
+                        .appendTo($(yasqe.getWrapperElement()));
+                }
+            },
+            hide: function (yasqe, completer) {
+                if (completionNotifications[completer.name]) {
+                    completionNotifications[completer.name].hide();
+                }
+            }
+        },
+        autoComplete: autoComplete,
+        getTrie: function (completer) {
+            return typeof completer == "string" ? tries[completer] : tries[completer.name];
+        }
+    };
+};
+
 
 //
 //module.exports = {
@@ -9676,7 +9679,7 @@ var selectHint = function(yasqe, data, completion) {
 //	loadBulkCompletions: loadBulkCompletions,
 //};
 
-},{"../../lib/trie.js":4,"../main.js":41,"../utils.js":47,"jquery":undefined,"yasgui-utils":27}],32:[function(require,module,exports){
+},{"../../lib/trie.js":4,"../utils.js":47,"jquery":undefined,"yasgui-utils":27}],32:[function(require,module,exports){
 "use strict";
 var $ = (function(){try{return require('jquery')}catch(e){return window.jQuery}})();
 module.exports = function(yasqe, name) {
@@ -9724,9 +9727,9 @@ module.exports.postProcessToken = function(yasqe, token, suggestedString) {
 
 },{"./utils":35,"./utils.js":35,"jquery":undefined}],33:[function(require,module,exports){
 "use strict";
-var $ = (function(){try{return require('jquery')}catch(e){return window.jQuery}})();
-//this is a mapping from the class names (generic ones, for compatability with codemirror themes), to what they -actually- represent
-var tokenTypes = {
+const $ = (function(){try{return require('jquery')}catch(e){return window.jQuery}})();
+//this is a mapping from the class names (generic ones, for compatibility with codemirror themes), to what they -actually- represent
+const tokenTypes = {
   "string-2": "prefixed",
   atom: "var"
 };
@@ -9742,12 +9745,14 @@ module.exports = function(yasqe, completerName) {
       return module.exports.isValidCompletionPosition(yasqe);
     },
     get: function(token, callback) {
-      $.get(module.exports.fetchFrom, function(data) {
-        var prefixArray = [];
-        for (var prefix in data) {
-          if (prefix == "bif") continue; // skip this one! see #231
-          var completeString = prefix + ": <" + data[prefix] + ">";
-          prefixArray.push(completeString); // the array we want to store in localstorage
+      $.getJSON(module.exports.fetchFrom, function(data) {
+        let prefixArray = [];
+        for (let prefix in data) {
+          if (prefix === "bif") continue; // skip this one! see #231
+          if (data.hasOwnProperty(prefix)) {
+            let completeString = prefix + ": <" + data[prefix] + ">";
+            prefixArray.push(completeString); // the array we want to store in localstorage
+          }
         }
 
         prefixArray.sort();
@@ -9769,12 +9774,12 @@ module.exports = function(yasqe, completerName) {
   };
 };
 module.exports.isValidCompletionPosition = function(yasqe) {
-  var cur = yasqe.getCursor(), token = yasqe.getTokenAt(cur);
+  let cur = yasqe.getCursor(), token = yasqe.getTokenAt(cur);
 
   // not at end of line
   if (yasqe.getLine(cur.line).length > cur.ch) return false;
 
-  if (token.type != "ws") {
+  if (token.type !== "ws") {
     // we want to complete token, e.g. when the prefix starts with an a
     // (treated as a token in itself..)
     // but we to avoid including the PREFIX tag. So when we have just
@@ -9785,18 +9790,17 @@ module.exports.isValidCompletionPosition = function(yasqe) {
   // we shouldnt be at the uri part the prefix declaration
   // also check whether current token isnt 'a' (that makes codemirror
   // thing a namespace is a possiblecurrent
-  if (!token.string.indexOf("a") == 0 && $.inArray("PNAME_NS", token.state.possibleCurrent) == -1) return false;
+  if ((token.string.indexOf("a") !== 0) && $.inArray("PNAME_NS", token.state.possibleCurrent) === -1) return false;
 
   // First token of line needs to be PREFIX,
   // there should be no trailing text (otherwise, text is wrongly inserted
   // in between)
-  var previousToken = yasqe.getPreviousNonWsToken(cur.line, token);
-  if (!previousToken || previousToken.string.toUpperCase() != "PREFIX") return false;
-  return true;
+  let previousToken = yasqe.getPreviousNonWsToken(cur.line, token);
+  return !(!previousToken || previousToken.string.toUpperCase() !== "PREFIX");
 };
 module.exports.preprocessPrefixTokenForCompletion = function(yasqe, token) {
-  var previousToken = yasqe.getPreviousNonWsToken(yasqe.getCursor().line, token);
-  if (previousToken && previousToken.string && previousToken.string.slice(-1) == ":") {
+  let previousToken = yasqe.getPreviousNonWsToken(yasqe.getCursor().line, token);
+  if (previousToken && previousToken.string && previousToken.string.slice(-1) === ":") {
     //combine both tokens! In this case we have the cursor at the end of line "PREFIX bla: <".
     //we want the token to be "bla: <", en not "<"
     token = {
@@ -9813,31 +9817,32 @@ module.exports.preprocessPrefixTokenForCompletion = function(yasqe, token) {
  * using list from prefix.cc
  *
  * @param yasqe
+ * @param completerName
  */
 module.exports.appendPrefixIfNeeded = function(yasqe, completerName) {
   if (!yasqe.autocompleters.getTrie(completerName)) return; // no prefixed defined. just stop
-  if (!yasqe.options.autocompleters || yasqe.options.autocompleters.indexOf(completerName) == -1) return; //this autocompleter is disabled
-  var cur = yasqe.getCursor();
+  if (!yasqe.options.autocompleters || yasqe.options.autocompleters.indexOf(completerName) === -1) return; //this autocompleter is disabled
+  let cur = yasqe.getCursor();
 
-  var token = yasqe.getTokenAt(cur);
-  if (tokenTypes[token.type] == "prefixed") {
-    var colonIndex = token.string.indexOf(":");
+  let token = yasqe.getTokenAt(cur);
+  if (tokenTypes[token.type] === "prefixed") {
+    let colonIndex = token.string.indexOf(":");
     if (colonIndex !== -1) {
       // check previous token isnt PREFIX, or a '<'(which would mean we are in a uri)
       //			var firstTokenString = yasqe.getNextNonWsToken(cur.line).string.toUpperCase();
-      var lastNonWsTokenString = yasqe.getPreviousNonWsToken(cur.line, token).string.toUpperCase();
-      var previousToken = yasqe.getTokenAt({
+      let lastNonWsTokenString = yasqe.getPreviousNonWsToken(cur.line, token).string.toUpperCase();
+      let previousToken = yasqe.getTokenAt({
         line: cur.line,
         ch: token.start
       }); // needs to be null (beginning of line), or whitespace
-      if (lastNonWsTokenString != "PREFIX" && (previousToken.type == "ws" || previousToken.type == null)) {
+      if (lastNonWsTokenString !== "PREFIX" && (previousToken.type === "ws" || previousToken.type == null)) {
         // check whether it isnt defined already (saves us from looping
         // through the array)
-        var currentPrefix = token.string.substring(0, colonIndex + 1);
-        var queryPrefixes = yasqe.getPrefixesFromQuery();
+        let currentPrefix = token.string.substring(0, colonIndex + 1);
+        let queryPrefixes = yasqe.getPrefixesFromQuery();
         if (queryPrefixes[currentPrefix.slice(0, -1)] == null) {
           // ok, so it isnt added yet!
-          var completions = yasqe.autocompleters.getTrie(completerName).autoComplete(currentPrefix);
+          let completions = yasqe.autocompleters.getTrie(completerName).autoComplete(currentPrefix);
           if (completions.length > 0) {
             yasqe.addPrefixes(completions[0]);
           }
@@ -9953,7 +9958,7 @@ var postprocessResourceTokenForCompletion = function(yasqe, token, suggestedStri
 };
 
 //Use protocol relative request when served via http[s]*. Otherwise (e.g. file://, fetch via http)
-var reqProtocol = window.location.protocol.indexOf("http") === 0 ? "//" : "http://";
+var reqProtocol = window.location.protocol.indexOf("http") === 0 ? "https://" : "http://";
 var fetchFromLov = function(yasqe, completer, token, callback) {
   if (!token || !token.string || token.string.trim().length == 0) {
     yasqe.autocompleters.notifications.getEl(completer).empty().append("Nothing to autocomplete yet!");
@@ -10118,169 +10123,179 @@ module.exports = {
  */
 var $ = (function(){try{return require('jquery')}catch(e){return window.jQuery}})(), YASQE = require("./main.js");
 YASQE.defaults = $.extend(true, {}, YASQE.defaults, {
-  mode: "sparql11",
-  /**
-	 * Query string
-	 */
-  value: "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT * WHERE {\n  ?sub ?pred ?obj .\n} \nLIMIT 10",
-  highlightSelectionMatches: {
-    showToken: /\w/
-  },
-  tabMode: "indent",
-  lineNumbers: true,
-  lineWrapping: true,
-  backdrop: false,
-  foldGutter: {
-    rangeFinder: new YASQE.fold.combine(YASQE.fold.brace, YASQE.fold.prefix)
-  },
-  collapsePrefixesOnLoad: false,
-  gutters: ["gutterErrorBar", "CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-  matchBrackets: true,
-  fixedGutter: true,
-  syntaxErrorCheck: true,
-  onQuotaExceeded: function(e) {
-    //fail silently
-    console.warn("Could not store in localstorage. Skipping..", e);
-  },
-  /**
-	 * Extra shortcut keys. Check the CodeMirror manual on how to add your own
-	 *
-	 * @property extraKeys
-	 * @type object
-	 */
-  extraKeys: {
-    //					"Ctrl-Space" : function(yasqe) {
-    //						YASQE.autoComplete(yasqe);
-    //					},
-    "Ctrl-Space": YASQE.autoComplete,
-
-    "Cmd-Space": YASQE.autoComplete,
-    "Ctrl-D": YASQE.deleteLine,
-    "Ctrl-K": YASQE.deleteLine,
-    "Shift-Ctrl-K": YASQE.deleteLine,
-    "Cmd-D": YASQE.deleteLine,
-    "Cmd-K": YASQE.deleteLine,
-    "Ctrl-/": YASQE.commentLines,
-    "Cmd-/": YASQE.commentLines,
-    "Ctrl-Alt-Down": YASQE.copyLineDown,
-    "Ctrl-Alt-Up": YASQE.copyLineUp,
-    "Cmd-Alt-Down": YASQE.copyLineDown,
-    "Cmd-Alt-Up": YASQE.copyLineUp,
-    "Shift-Ctrl-F": YASQE.doAutoFormat,
-    "Shift-Cmd-F": YASQE.doAutoFormat,
-    "Ctrl-]": YASQE.indentMore,
-    "Cmd-]": YASQE.indentMore,
-    "Ctrl-[": YASQE.indentLess,
-    "Cmd-[": YASQE.indentLess,
-    "Ctrl-S": YASQE.storeQuery,
-    "Cmd-S": YASQE.storeQuery,
-    "Ctrl-Enter": YASQE.executeQuery,
-    "Cmd-Enter": YASQE.executeQuery,
-    F11: function(yasqe) {
-      yasqe.setOption("fullScreen", !yasqe.getOption("fullScreen"));
+    mode: "sparql11",
+    /**
+     * Query string
+     */
+    value: "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT * WHERE {\n  ?sub ?pred ?obj .\n} \nLIMIT 10",
+    highlightSelectionMatches: {
+        showToken: /\w/
     },
-    Esc: function(yasqe) {
-      if (yasqe.getOption("fullScreen")) yasqe.setOption("fullScreen", false);
+    tabMode: "indent",
+    lineNumbers: true,
+    lineWrapping: true,
+    backdrop: false,
+    foldGutter: {
+        rangeFinder: new YASQE.fold.combine(YASQE.fold.brace, YASQE.fold.prefix)
+    },
+    collapsePrefixesOnLoad: false,
+    gutters: ["gutterErrorBar", "CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+    matchBrackets: true,
+    fixedGutter: true,
+    syntaxErrorCheck: true,
+    onQuotaExceeded: function (e) {
+        //fail silently
+        console.warn("Could not store in localstorage. Skipping..", e);
+    },
+    /**
+     * Extra shortcut keys. Check the CodeMirror manual on how to add your own
+     *
+     * @property extraKeys
+     * @type object
+     */
+    extraKeys: {
+        //					"Ctrl-Space" : function(yasqe) {
+        //						YASQE.autoComplete(yasqe);
+        //					},
+        "Ctrl-Space": YASQE.autoComplete,
+
+        "Cmd-Space": YASQE.autoComplete,
+        "Ctrl-D": YASQE.deleteLine,
+        "Ctrl-K": YASQE.deleteLine,
+        "Shift-Ctrl-K": YASQE.deleteLine,
+        "Cmd-D": YASQE.deleteLine,
+        "Cmd-K": YASQE.deleteLine,
+        "Ctrl-/": YASQE.commentLines,
+        "Cmd-/": YASQE.commentLines,
+        "Ctrl-Alt-Down": YASQE.copyLineDown,
+        "Ctrl-Alt-Up": YASQE.copyLineUp,
+        "Cmd-Alt-Down": YASQE.copyLineDown,
+        "Cmd-Alt-Up": YASQE.copyLineUp,
+        "Shift-Ctrl-F": YASQE.doAutoFormat,
+        "Shift-Cmd-F": YASQE.doAutoFormat,
+        "Ctrl-]": YASQE.indentMore,
+        "Cmd-]": YASQE.indentMore,
+        "Ctrl-[": YASQE.indentLess,
+        "Cmd-[": YASQE.indentLess,
+        "Ctrl-S": YASQE.storeQuery,
+        "Cmd-S": YASQE.storeQuery,
+        "Ctrl-Enter": YASQE.executeQuery,
+        "Cmd-Enter": YASQE.executeQuery,
+        F11: function (yasqe) {
+            yasqe.setOption("fullScreen", !yasqe.getOption("fullScreen"));
+        },
+        Esc: function (yasqe) {
+            if (yasqe.getOption("fullScreen")) yasqe.setOption("fullScreen", false);
+        }
+    },
+    cursorHeight: 0.9,
+
+    /**
+     * Show the fullscreen link
+     */
+    showFullscreenLink: true,
+
+    /**
+     * Draw the buttons
+     */
+    drawButtons: true,
+
+    /**
+     * Show a button with which users can create a link to this query. Set this value to null to disable this functionality.
+     * By default, this feature is enabled, and the only the query value is appended to the link.
+     * ps. This function should return an object which is parseable by jQuery.param (http://api.jquery.com/jQuery.param/)
+     */
+    createShareLink: YASQE.createShareLink,
+
+    createShortLink: null,
+
+    /**
+     * Consume links shared by others, by checking the url for arguments coming from a query link. Defaults by only checking the 'query=' argument in the url
+     */
+    consumeShareLink: YASQE.consumeShareLink,
+
+    /**
+     * Change persistency settings for the YASQE query value. Setting the values
+     * to null, will disable persistancy: nothing is stored between browser
+     * sessions Setting the values to a string (or a function which returns a
+     * string), will store the query in localstorage using the specified string.
+     * By default, the ID is dynamically generated using the closest dom ID, to avoid collissions when using multiple YASQE items on one
+     * page
+     *
+     * @type function|string
+     */
+    persistent: function (yasqe) {
+        return "yasqe_" + $(yasqe.getWrapperElement()).closest("[id]").attr("id") + "_queryVal";
+    },
+
+    /**
+     * Settings for querying sparql endpoints
+     */
+    sparql: {
+        queryName: function (yasqe) {
+            return yasqe.getQueryMode();
+        },
+        showQueryButton: false,
+
+        /**f
+         * Endpoint to query
+         *
+         * @property sparql.endpoint
+         * @type String|function
+         */
+        endpoint: "http://dbpedia.org/sparql",
+        /**
+         * Request method via which to access SPARQL endpoint
+         *
+         * @property sparql.requestMethod
+         * @type String|function
+         */
+        requestMethod: "POST",
+
+        /**
+         * @type String|function
+         */
+        acceptHeaderGraph: "text/turtle,*/*;q=0.9",
+        /**
+         * @type String|function
+         */
+        acceptHeaderSelect: "application/sparql-results+json,*/*;q=0.9",
+        /**
+         * @type String|function
+         */
+        acceptHeaderUpdate: "text/plain,*/*;q=0.9",
+
+        /**
+         * Named graphs to query.
+         */
+        namedGraphs: [],
+        /**
+         * Default graphs to query.
+         */
+        defaultGraphs: [],
+
+        /**
+         * Additional request arguments. Add them in the form: {name: "name", value: "value"}
+         */
+        args: [],
+
+        /**
+         * Additional request headers
+         */
+        headers: {},
+
+        getQueryForAjax: null,
+        /**
+         * Set of ajax callbacks
+         */
+        callbacks: {
+            beforeSend: null,
+            complete: null,
+            error: null,
+            success: null
+        },
+        handlers: {} //keep here for backwards compatability
     }
-  },
-  cursorHeight: 0.9,
-
-  /**
-	 * Show a button with which users can create a link to this query. Set this value to null to disable this functionality.
-	 * By default, this feature is enabled, and the only the query value is appended to the link.
-	 * ps. This function should return an object which is parseable by jQuery.param (http://api.jquery.com/jQuery.param/)
-	 */
-  createShareLink: YASQE.createShareLink,
-
-  createShortLink: null,
-
-  /**
-	 * Consume links shared by others, by checking the url for arguments coming from a query link. Defaults by only checking the 'query=' argument in the url
-	 */
-  consumeShareLink: YASQE.consumeShareLink,
-
-  /**
-	 * Change persistency settings for the YASQE query value. Setting the values
-	 * to null, will disable persistancy: nothing is stored between browser
-	 * sessions Setting the values to a string (or a function which returns a
-	 * string), will store the query in localstorage using the specified string.
-	 * By default, the ID is dynamically generated using the closest dom ID, to avoid collissions when using multiple YASQE items on one
-	 * page
-	 *
-	 * @type function|string
-	 */
-  persistent: function(yasqe) {
-    return "yasqe_" + $(yasqe.getWrapperElement()).closest("[id]").attr("id") + "_queryVal";
-  },
-
-  /**
-	 * Settings for querying sparql endpoints
-	 */
-  sparql: {
-    queryName: function(yasqe) {
-      return yasqe.getQueryMode();
-    },
-    showQueryButton: false,
-
-    /**f
-		 * Endpoint to query
-		 *
-		 * @property sparql.endpoint
-		 * @type String|function
-		 */
-    endpoint: "http://dbpedia.org/sparql",
-    /**
-		 * Request method via which to access SPARQL endpoint
-		 *
-		 * @property sparql.requestMethod
-		 * @type String|function
-		 */
-    requestMethod: "POST",
-
-    /**
-		 * @type String|function
-		 */
-    acceptHeaderGraph: "text/turtle,*/*;q=0.9",
-    /**
-		 * @type String|function
-		 */
-    acceptHeaderSelect: "application/sparql-results+json,*/*;q=0.9",
-    /**
-		 * @type String|function
-		 */
-    acceptHeaderUpdate: "text/plain,*/*;q=0.9",
-
-    /**
-		 * Named graphs to query.
-		 */
-    namedGraphs: [],
-    /**
-		 * Default graphs to query.
-		 */
-    defaultGraphs: [],
-
-    /**
-		 * Additional request arguments. Add them in the form: {name: "name", value: "value"}
-		 */
-    args: [],
-
-    /**
-		 * Additional request headers
-		 */
-    headers: {},
-
-    getQueryForAjax: null,
-    /**
-		 * Set of ajax callbacks
-		 */
-    callbacks: {
-      beforeSend: null,
-      complete: null,
-      error: null,
-      success: null
-    },
-    handlers: {} //keep here for backwards compatability
-  }
 });
 
 },{"./main.js":41,"jquery":undefined}],39:[function(require,module,exports){
@@ -10602,7 +10617,11 @@ var postProcessCmElement = function(yasqe) {
     if (valueFromStorage) yasqe.setValue(valueFromStorage);
   }
 
-  root.drawButtons(yasqe);
+  if (yasqe.options.drawButtons === true) {
+    root.drawButtons(yasqe);
+  } else {
+    yasqe.buttons = {};
+  }
 
   /**
 	 * Add event handlers
@@ -10678,12 +10697,14 @@ var getUrlParams = function() {
  */
 
 var updateButtonsTransparency = function(yasqe) {
-  yasqe.cursor = $(".CodeMirror-cursor");
-  if (yasqe.buttons && yasqe.buttons.is(":visible") && yasqe.cursor.length > 0) {
-    if (utils.elementsOverlap(yasqe.cursor, yasqe.buttons)) {
-      yasqe.buttons.find("svg").attr("opacity", "0.2");
-    } else {
-      yasqe.buttons.find("svg").attr("opacity", "1.0");
+  if (yasqe.options.drawButtons === true) {
+    yasqe.cursor = $(".CodeMirror-cursor");
+    if (yasqe.buttons && yasqe.buttons.is(":visible") && yasqe.cursor.length > 0) {
+      if (utils.elementsOverlap(yasqe.cursor, yasqe.buttons)) {
+        yasqe.buttons.find("svg").attr("opacity", "0.2");
+      } else {
+        yasqe.buttons.find("svg").attr("opacity", "1.0");
+      }
     }
   }
 };
@@ -10786,12 +10807,14 @@ root.registerAutocompleter("classes", require("./autocompleters/classes.js"));
 root.registerAutocompleter("variables", require("./autocompleters/variables.js"));
 
 root.positionButtons = function(yasqe) {
-  var scrollBar = $(yasqe.getWrapperElement()).find(".CodeMirror-vscrollbar");
-  var offset = 0;
-  if (scrollBar.is(":visible")) {
-    offset = scrollBar.outerWidth();
+  if (yasqe.options.drawButtons === true) {
+    var scrollBar = $(yasqe.getWrapperElement()).find(".CodeMirror-vscrollbar");
+    var offset = 0;
+    if (scrollBar.is(":visible")) {
+      offset = scrollBar.outerWidth();
+    }
+    if (yasqe.buttons.is(":visible")) yasqe.buttons.css("right", offset + 4);
   }
-  if (yasqe.buttons.is(":visible")) yasqe.buttons.css("right", offset + 4);
 };
 
 /**
@@ -10809,6 +10832,7 @@ root.createShareLink = function(yasqe) {
   urlParams["query"] = yasqe.getValue();
   return urlParams;
 };
+
 root.getAsCurl = function(yasqe, ajaxConfig) {
   var curl = require("./curl.js");
   return curl.createCurlString(yasqe, ajaxConfig);
@@ -10904,29 +10928,30 @@ root.drawButtons = function(yasqe) {
   /**
 	 * draw fullscreen button
 	 */
-
-  var toggleFullscreen = $("<div>", {
-    class: "fullscreenToggleBtns"
-  })
-    .append(
-      $(yutils.svg.getElement(imgs.fullscreen))
-        .addClass("yasqe_fullscreenBtn")
-        .attr("title", "Set editor full screen")
-        .click(function() {
-          yasqe.setOption("fullScreen", true);
-          yasqe.emit('fullscreen-enter')
-        })
-    )
-    .append(
-      $(yutils.svg.getElement(imgs.smallscreen))
-        .addClass("yasqe_smallscreenBtn")
-        .attr("title", "Set editor to normal size")
-        .click(function() {
-          yasqe.setOption("fullScreen", false);
-          yasqe.emit('fullscreen-leave')
-        })
-    );
-  yasqe.buttons.append(toggleFullscreen);
+  if (yasqe.options.showFullscreenLink) {
+    var toggleFullscreen = $("<div>", {
+      class: "fullscreenToggleBtns"
+    })
+        .append(
+            $(yutils.svg.getElement(imgs.fullscreen))
+                .addClass("yasqe_fullscreenBtn")
+                .attr("title", "Set editor full screen")
+                .click(function () {
+                  yasqe.setOption("fullScreen", true);
+                  yasqe.emit('fullscreen-enter')
+                })
+        )
+        .append(
+            $(yutils.svg.getElement(imgs.smallscreen))
+                .addClass("yasqe_smallscreenBtn")
+                .attr("title", "Set editor to normal size")
+                .click(function () {
+                  yasqe.setOption("fullScreen", false);
+                  yasqe.emit('fullscreen-leave')
+                })
+        );
+    yasqe.buttons.append(toggleFullscreen);
+  }
 
   if (yasqe.options.sparql.showQueryButton) {
     $("<div>", {
@@ -11211,7 +11236,8 @@ function findFirstPrefix(cm, line, ch, lineText) {
     if (pass == 1 && found < ch) break;
     var tokenType = cm.getTokenTypeAt(CodeMirror.Pos(line, found + 1));
     if (!/^(comment|string)/.test(tokenType)) return found + 1;
-    at = found - 1;
+    if (!/(keyword)/.test(tokenType)) break;
+    // at = found - 1;
     //Could not find a prefix, no use looping any further. Probably invalid query
     if (at === pass) break;
   }

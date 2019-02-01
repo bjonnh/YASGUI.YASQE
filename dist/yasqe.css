@@ -512,7 +512,8 @@
     padding: 0px 5px;
     right: 0px;
     bottom: 0px;
-    font-size: 90%; }
+    font-size: 90%;
+    z-index: 1200; }
   .yasqe .parseErrorIcon {
     width: 15px;
     height: 15px; }
@@ -536,15 +537,17 @@
     /* Opera 7 */
     white-space: pre-wrap;
     /* css-3 */
-    white-space: normal; }
+    white-space: normal;
+    z-index: 1000; }
   .yasqe .notificationLoader {
     width: 18px;
     height: 18px;
-    vertical-align: middle; }
+    vertical-align: middle;
+    z-index: 2000; }
 
 .CodeMirror-hints {
   position: absolute;
-  z-index: 10;
+  z-index: 1200;
   overflow: hidden;
   list-style: none;
   margin: 0;
