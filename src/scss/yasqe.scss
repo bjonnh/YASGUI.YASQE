@@ -16,6 +16,7 @@
 .CodeMirror-fullscreen {
 	z-index:1100;//this way, we're higher than the leaflet z-index used in YASR (1000)
 }
+
   	span.shortlinkErr {
   		font-size: small;
   		color: red;
@@ -31,6 +32,7 @@
   		right: 0px;
   		bottom: 0px;
   		font-size: 90%;
+		z-index:1200;
   	}
 
 
@@ -62,9 +64,11 @@
     	    white-space: pre-wrap;
     	    /* css-3 */
     	    white-space: normal;
+			z-index: 1000;
     	}
     	.notificationLoader {
     		width: 18px;
     		height: 18px;
     		vertical-align: middle;
+			z-index: 2000;
     	}

@@ -1,6 +1,6 @@
 .CodeMirror-hints {
   position: absolute;
-  z-index: 10;
+  z-index: 1200; // Required in fullscreen
   overflow: hidden;
   list-style: none;
 
