@@ -18,6 +18,7 @@ module.exports = function(yasqe, completerName) {
     },
     get: function(token, callback) {
       $.getJSON(module.exports.fetchFrom, function(data) {
+<<<<<<< HEAD
         let prefixArray = [];
         for (let prefix in data) {
           if (prefix === "bif") continue; // skip this one! see #231
@@ -25,6 +26,13 @@ module.exports = function(yasqe, completerName) {
             let completeString = prefix + ": <" + data[prefix] + ">";
             prefixArray.push(completeString); // the array we want to store in localstorage
           }
+=======
+        var prefixArray = [];
+        for (var prefix in data) {
+          if (prefix == "bif") continue; // skip this one! see #231
+          var completeString = prefix + ": <" + data[prefix] + ">";
+          prefixArray.push(completeString); // the array we want to store in localstorage
+>>>>>>> 05bb14dba3a45a750281fb29d6f6738ddecbb1dc
         }
 
         prefixArray.sort();
