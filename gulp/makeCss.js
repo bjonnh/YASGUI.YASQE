@@ -7,7 +7,7 @@ sass = require("gulp-sass"), autoprefixer = require("gulp-autoprefixer"), rename
   "gulp-rename"
 ), notify = require("gulp-notify"), minifyCSS = require("gulp-cssnano");
 
-gulp.task("makeCss", function() {
+gulp.task("makeCss", gulp.series(function() {
   return gulp
     .src(paths.style)
     .pipe(sass())
@@ -36,7 +36,7 @@ gulp.task("makeCss", function() {
     .pipe(rename(paths.bundleFileName + ".min.css"))
     .pipe(gulp.dest(paths.bundleDir))
     .pipe(connect.reload());
-});
+}));
 
 var cssDeps = [
   "./node_modules/codemirror/lib/codemirror.css",
@@ -44,7 +44,7 @@ var cssDeps = [
   "./node_modules/codemirror/addon/fold/foldgutter.css",
   "./node_modules/codemirror/addon/hint/show-hint.css"
 ];
-gulp.task("copyCssDeps", function() {
+gulp.task("copyCssDeps", gulp.series(function() {
   return gulp
     .src(cssDeps)
     .pipe(
@@ -54,4 +54,4 @@ gulp.task("copyCssDeps", function() {
       })
     )
     .pipe(gulp.dest("./src/scss/cssIncludes"));
-});
+}));

@@ -8,7 +8,7 @@ uglify = require("gulp-uglify"), sass = require("gulp-sass"), buffer = require("
   "gulp-concat"
 );
 
-gulp.task("makeMainPageJs", function() {
+gulp.task("makeMainPageJs", gulp.series(function() {
   return gulp.src("./doc/*.js").pipe(jsValidate()).on("finish", function() {
     browserify({ entries: ["./doc/main.js"], debug: true })
       .bundle()
@@ -17,14 +17,14 @@ gulp.task("makeMainPageJs", function() {
       .pipe(uglify())
       .pipe(gulp.dest("doc"));
   });
-});
-gulp.task("makeMainPageCss", function() {
+}));
+gulp.task("makeMainPageCss", gulp.series(function() {
   return gulp
     .src(["./doc/main.scss"])
     .pipe(sass())
     .pipe(minifyCSS())
     .pipe(concat("doc.min.css"))
     .pipe(gulp.dest("doc"));
-});
+}));
 
-gulp.task("makeMainPage", ["makeMainPageJs", "makeMainPageCss"]);
+gulp.task("makeMainPage", gulp.series(["makeMainPageJs", "makeMainPageCss"]));

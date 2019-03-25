@@ -15,7 +15,7 @@ var gulp = require("gulp"),
   notify = require("gulp-notify"),
   sourcemaps = require("gulp-sourcemaps");
 
-gulp.task("browserify", function() {
+gulp.task("browserify", gulp.series(async function() {
   return browserify({ entries: ["./src/entry.js"], standalone: "YASQE", debug: true })
     .transform({ global: true }, optionalShim)
     .exclude("jquery")
@@ -44,9 +44,9 @@ gulp.task("browserify", function() {
     )
     .pipe(sourcemaps.write("./"))
     .pipe(gulp.dest(paths.bundleDir));
-});
+}));
 
-gulp.task("browserifyWithDeps", function() {
+gulp.task("browserifyWithDeps", gulp.series(async function() {
   var bundler = browserify({ entries: ["./src/entry.js"], standalone: "YASQE", debug: true });
 
   return bundler
@@ -74,12 +74,12 @@ gulp.task("browserifyWithDeps", function() {
     )
     .pipe(sourcemaps.write("./"))
     .pipe(gulp.dest(paths.bundleDir));
-});
+}));
 
 /**
  * Faster, because we don't minify, and include source maps in js file (notice we store it with .min.js extension, so we don't have to change the index.html file for debugging)
  */
-gulp.task("browserifyForDebug", function() {
+gulp.task("browserifyForDebug", gulp.series(function() {
   var bundler = browserify({ entries: ["./src/entry.js"], standalone: "YASQE", debug: true });
 
   return bundler
@@ -94,4 +94,4 @@ gulp.task("browserifyForDebug", function() {
     .pipe(embedlr())
     .pipe(gulp.dest(paths.bundleDir))
     .pipe(connect.reload());
-});
+}));
