@@ -538,12 +538,12 @@
     white-space: pre-wrap;
     /* css-3 */
     white-space: normal;
-    z-index: 1000; }
+    z-index: 1200; }
   .yasqe .notificationLoader {
     width: 18px;
     height: 18px;
     vertical-align: middle;
-    z-index: 2000; }
+    z-index: 1200; }
 
 .CodeMirror-hints {
   position: absolute;

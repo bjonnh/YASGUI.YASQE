@@ -9114,7 +9114,7 @@ module.exports={
   "_args": [
     [
       "yasgui-utils@1.6.7",
-      "/home/bjo/Software/Semantic/YASGUI.YASQE"
+      "/home/bjo/Software/Mine/2018-napralert-matcher/webgui/YASGUI.YASQE"
     ]
   ],
   "_from": "yasgui-utils@1.6.7",
@@ -9138,7 +9138,7 @@ module.exports={
   ],
   "_resolved": "https://registry.npmjs.org/yasgui-utils/-/yasgui-utils-1.6.7.tgz",
   "_spec": "1.6.7",
-  "_where": "/home/bjo/Software/Semantic/YASGUI.YASQE",
+  "_where": "/home/bjo/Software/Mine/2018-napralert-matcher/webgui/YASGUI.YASQE",
   "author": {
     "name": "Laurens Rietveld"
   },
@@ -9332,37 +9332,37 @@ module.exports={
   },
   "devDependencies": {
     "bootstrap-sass": "^3.4.0",
-    "browserify": "^13.1.0",
-    "browserify-shim": "^3.8.12",
-    "browserify-transform-tools": "^1.6.0",
-    "exorcist": "^0.4.0",
-    "gulp": "^3.9.1",
+    "browserify": "^16.2.3",
+    "browserify-shim": "^3.8.14",
+    "browserify-transform-tools": "^1.7.0",
+    "exorcist": "^1.0.1",
+    "gulp": "^4.0.0",
     "gulp-autoprefixer": "^3.1.0",
     "gulp-bump": "^2.9.0",
     "gulp-concat": "^2.6.0",
-    "gulp-connect": "^4.2.0",
-    "gulp-cssimport": "^3.1.0",
+    "gulp-connect": "^5.7.0",
+    "gulp-cssimport": "^7.0.0",
     "gulp-cssnano": "^2.1.3",
     "gulp-embedlr": "^0.5.2",
     "gulp-filter": "^4.0.0",
     "gulp-git": "^2.8.1",
     "gulp-jsvalidate": "^2.1.0",
-    "gulp-livereload": "^3.8.1",
-    "gulp-notify": "^2.2.0",
+    "gulp-livereload": "^4.0.1",
+    "gulp-notify": "^3.2.0",
     "gulp-rename": "^1.4.0",
     "gulp-sass": "^2.3.2",
     "gulp-sourcemaps": "^1.12.1",
     "gulp-streamify": "1.0.2",
     "gulp-tag-version": "^1.3.1",
     "gulp-uglify": "^1.5.4",
-    "node-sass": "^4.11.0",
     "natives": "^1.1.6",
+    "node-sass": "^4.11.0",
     "require-dir": "^0.3.2",
     "run-sequence": "^1.2.2",
     "vinyl-buffer": "^1.0.1",
-    "vinyl-source-stream": "^1.1.2",
-    "vinyl-transform": "1.0.0",
-    "watchify": "^3.11.0"
+    "vinyl-source-stream": "^2.0.0",
+    "vinyl-transform": "^1.0.0",
+    "watchify": "^3.11.1"
   },
   "bugs": "https://github.com/YASGUI/YASQE/issues/",
   "keywords": [
@@ -9385,7 +9385,7 @@ module.exports={
   },
   "dependencies": {
     "codemirror": "5.17.0",
-    "jquery": "^2.2.4",
+    "jquery": "^3.3.0",
     "prettier": "^1.16.3",
     "yasgui-utils": "^1.6.7"
   },
@@ -11236,8 +11236,9 @@ function findFirstPrefix(cm, line, ch, lineText) {
     if (pass == 1 && found < ch) break;
     var tokenType = cm.getTokenTypeAt(CodeMirror.Pos(line, found + 1));
     if (!/^(comment|string)/.test(tokenType)) return found + 1;
-    if (!/(keyword)/.test(tokenType)) break;
-    // at = found - 1;
+
+    if (!/(comment)/.test(tokenType)) break;
+
     //Could not find a prefix, no use looping any further. Probably invalid query
     if (at === pass) break;
   }
