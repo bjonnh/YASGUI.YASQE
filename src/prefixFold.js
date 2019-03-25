@@ -29,13 +29,9 @@ function findFirstPrefix(cm, line, ch, lineText) {
     if (pass == 1 && found < ch) break;
     var tokenType = cm.getTokenTypeAt(CodeMirror.Pos(line, found + 1));
     if (!/^(comment|string)/.test(tokenType)) return found + 1;
-<<<<<<< HEAD
-    if (!/(keyword)/.test(tokenType)) break;
-    // at = found - 1;
-=======
+
     if (!/(comment)/.test(tokenType)) break;
-    
->>>>>>> 05bb14dba3a45a750281fb29d6f6738ddecbb1dc
+
     //Could not find a prefix, no use looping any further. Probably invalid query
     if (at === pass) break;
   }
